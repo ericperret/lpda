@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<!-- ============================================================
+   Nom     : lpda_uhf.html
+   Objet   : Calculateur d'antenne log-periodique (LPDA) UHF
+             - longueurs d'elements (longueur de coupe d'un brin)
+             - angle optimal (gain max, Carrel)
+             - positions de percage / plan pret a couper et percer
+   Auteur  : Eric Perret (ericperret)
+   Date    : 2026-05-30
+   Version : 1.1  (K auto selon L/Ø ; plan = vue dessus + vue profil, booms rouge/vert)
+   Note    : 100% HTML/CSS/JS, aucune dependance, aucun lien externe.
+   Licence : CC BY 4.0
+   ============================================================ -->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LPDA UHF — calcul & plan</title>
+<style>
+  :root{
+    --bg:#f4f6f8; --pan:#ffffff; --ink:#16202a; --mut:#5a6b7a;
+    --line:#cdd6de; --acc:#0b6e99; --acc2:#b4541a; --ok:#1f7a3d; --warn:#a02020;
+    --boom:#3a4650; --elem:#0b6e99;
+    --red:#c62828; --green:#2e7d32;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  header{padding:14px 18px;border-bottom:1px solid var(--line);background:var(--pan)}
+  h1{margin:0;font-size:18px}
+  h1 small{color:var(--mut);font-weight:400;font-size:13px}
+  main{max-width:1080px;margin:0 auto;padding:16px}
+  .panel{background:var(--pan);border:1px solid var(--line);border-radius:8px;
+    padding:14px 16px;margin-bottom:14px}
+  fieldset{border:1px solid var(--line);border-radius:6px;margin:0 0 10px;padding:10px 12px}
+  legend{color:var(--acc);font-weight:600;padding:0 6px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+  label{display:block;font-size:12px;color:var(--mut);margin-bottom:3px}
+  input{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:5px;
+    font:inherit;background:#fff}
+  input:focus{outline:2px solid var(--acc);border-color:var(--acc)}
+  .syn{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .kpi{background:#eef3f6;border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+  .kpi b{display:block;font-size:20px}
+  .kpi span{color:var(--mut);font-size:12px}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th,td{border:1px solid var(--line);padding:5px 8px;text-align:right}
+  th{background:#eef3f6;text-align:right}
+  th:first-child,td:first-child{text-align:left}
+  tbody tr:nth-child(odd){background:#fafcfd}
+  .note{color:var(--mut);font-size:12px;margin:8px 0 0}
+  .warn{color:var(--warn);font-weight:600}
+  button{font:inherit;padding:7px 14px;border:1px solid var(--acc);background:var(--acc);
+    color:#fff;border-radius:6px;cursor:pointer}
+  button.sec{background:#fff;color:var(--acc)}
+  .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  svg{width:100%;height:auto;background:#fff;border:1px solid var(--line);border-radius:6px}
+  .legend-svg{font-size:12px;color:var(--mut);margin-top:6px}
+  @media print{
+    header,.controls,.bar{display:none}
+    body{background:#fff}
+    .panel{border:none;page-break-inside:avoid}
+    main{max-width:none;padding:0}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Antenne log-périodique UHF <small>— longueurs, angle optimal, plan de perçage</small></h1>
+</header>
+
+<main>
+  <section class="panel controls">
+    <fieldset>
+      <legend>Bande &amp; éléments</legend>
+      <div class="grid">
+        <div><label>Fréquence basse f_bas (MHz)</label><input id="flow" type="number" step="1" value="400"></div>
+        <div><label>Fréquence haute f_haut (MHz)</label><input id="fhigh" type="number" step="1" value="1000"></div>
+        <div><label>Nombre de paires N (dipôles)</label><input id="npair" type="number" step="1" value="8"></div>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Mécanique (mm)</legend>
+      <div class="grid">
+        <div><label>Côté du boom carré</label><input id="boom" type="number" step="0.5" value="10"></div>
+        <div><label>Débord (côté entrefer)</label><input id="over" type="number" step="0.5" value="5"></div>
+        <div><label>Entrefer entre booms</label><input id="gap" type="number" step="0.5" value="10"></div>
+        <div><label>Ø élément (tube)</label><input id="dia" type="number" step="0.5" value="4"></div>
+      </div>
+    </fieldset>
+    <div class="bar">
+      <button onclick="calc()">Calculer</button>
+      <button class="sec" onclick="window.print()">Imprimer le plan</button>
+    </div>
+  </section>
+
+  <section class="panel" id="synPanel">
+    <div class="syn" id="syn"></div>
+    <p class="note" id="warn"></p>
+  </section>
+
+  <section class="panel">
+    <h3 style="margin:0 0 8px">Liste de coupe &amp; perçage</h3>
+    <div style="overflow:auto"><table id="tbl"></table></div>
+    <p class="note">
+      Coupe d'un brin = (L/2) + traverse + débord. 2 brins identiques par paire.
+      Position mesurée depuis le 1<sup>er</sup> élément (le plus court, côté pointe/alimentation).
+      « Apex » = sommet virtuel où convergent les bords des éléments.
+    </p>
+  </section>
+
+  <section class="panel">
+    <h3 style="margin:0 0 8px">Plan (à l'échelle)</h3>
+    <h4 style="margin:6px 0 4px;color:var(--mut);font-weight:600">Vue de dessus</h4>
+    <div id="planTop"></div>
+    <h4 style="margin:14px 0 4px;color:var(--mut);font-weight:600">Vue de profil</h4>
+    <div id="planSide"></div>
+    <p class="legend-svg" id="planleg"></p>
+  </section>
+</main>
+
+<script>
+"use strict";
+/* --- physique --- */
+function demiOnde_mm(fMHz){ return 149896.229 / fMHz; }   // lambda/2 en mm (c=299792.458 km/s)
+
+/* correction de resonance d'un dipole cylindrique selon le rapport L/Ø.
+   Optimum calcule (pas une saisie) : plus l'element est "gros", plus K baisse. */
+function kReson(ratio){           // ratio = L_nominal / diametre
+  let k = 0.975 - 0.18/Math.sqrt(ratio);
+  return Math.min(0.98, Math.max(0.90, k));
+}
+
+/* gain optimum (sigma_opt) approx. d'apres contours de Carrel, dBi */
+function gainDbi(tau){
+  const T=[0.80,0.82,0.84,0.86,0.88,0.90,0.92,0.95];
+  const G=[7.4, 7.7, 8.0, 8.4, 8.8, 9.4, 10.1,11.3];
+  if(tau<=T[0]) return G[0];
+  if(tau>=T[T.length-1]) return G[G.length-1];
+  for(let i=0;i<T.length-1;i++){
+    if(tau>=T[i]&&tau<=T[i+1]){
+      const f=(tau-T[i])/(T[i+1]-T[i]);
+      return G[i]+f*(G[i+1]-G[i]);
+    }
+  }
+  return G[G.length-1];
+}
+
+function calc(){
+  const flow=+v('flow'), fhigh=+v('fhigh'), N=Math.round(+v('npair'));
+  const boom=+v('boom'), over=+v('over'), gap=+v('gap'), dia=+v('dia');
+  const warn=document.getElementById('warn'); warn.textContent='';
+
+  if(!(flow>0)||!(fhigh>flow)||!(N>=2)){
+    warn.innerHTML='<span class="warn">Entrées invalides : f_haut &gt; f_bas &gt; 0 et N ≥ 2.</span>';
+    return;
+  }
+  const traverse=boom;                       // le brin traverse le carre
+  const tau=Math.pow(flow/fhigh, 1/(N-1));   // facteur d'echelle
+  const sigma=0.243*tau-0.051;               // espacement de gain max (Carrel)
+  if(sigma<=0){
+    warn.innerHTML='<span class="warn">Trop peu d\'éléments pour cette bande (σ ≤ 0). Augmente N ou réduis la bande.</span>';
+    return;
+  }
+  const tanA=(1-tau)/(4*sigma);
+  const alpha=Math.atan(tanA)*180/Math.PI;   // demi-angle au sommet
+  const gain=gainDbi(tau);
+
+  /* elements : i=0 -> le plus court (pointe/f_haut) ; i=N-1 -> le plus long (queue/f_bas) */
+  const el=[];
+  for(let i=0;i<N;i++){
+    const f = fhigh*Math.pow(tau,i);          // freq de resonance
+    const L = K*demiOnde_mm(f);               // longueur dipole (bout a bout)
+    const xa = (L/2)/tanA;                    // distance depuis l'apex
+    el.push({i, f, L, xa});
+  }
+  const x0=el[0].xa;                          // apex -> 1er element
+  el.forEach((e,k)=>{
+    e.pos = e.xa - x0;                        // depuis le 1er element (pointe)
+    e.cut = e.L/2 + traverse + over;          // longueur de coupe d'un brin
+    e.sp  = k===0 ? 0 : e.xa - el[k-1].xa;    // espacement avec precedent
+  });
+  const boomLen = el[N-1].pos;                // 1er -> dernier element
+
+  /* synthese */
+  document.getElementById('syn').innerHTML =
+    kpi(tau.toFixed(4),'τ (échelle)') +
+    kpi(sigma.toFixed(4),'σ (espacement)') +
+    kpi((2*alpha).toFixed(1)+'°','Angle au sommet 2α') +
+    kpi('~'+gain.toFixed(1)+' dBi','Gain estimé') +
+    kpi(fmt(boomLen)+' mm','Boom utile (1er→dernier)') +
+    kpi(fmt(el[N-1].cut)+' mm','Brin le plus long') ;
+
+  /* tableau (pointe -> queue) */
+  let h='<thead><tr><th>Élt</th><th>Rôle</th><th>f rés. (MHz)</th>'
+      +'<th>L dipôle (mm)</th><th>Coupe brin (mm)</th>'
+      +'<th>Espac. préc. (mm)</th><th>Pos. / pointe (mm)</th><th>Pos. / apex (mm)</th></tr></thead><tbody>';
+  el.forEach((e,k)=>{
+    const role = k===0?'pointe (alim.)' : (k===N-1?'queue (lame 50Ω)':'');
+    h+='<tr><td>'+(k+1)+'</td><td>'+role+'</td><td>'+e.f.toFixed(1)+'</td>'
+      +'<td>'+fmt(e.L)+'</td><td><b>'+fmt(e.cut)+'</b></td>'
+      +'<td>'+(k===0?'—':fmt(e.sp))+'</td><td>'+fmt(e.pos)+'</td><td>'+fmt(e.xa)+'</td></tr>';
+  });
+  h+='</tbody>';
+  document.getElementById('tbl').innerHTML=h;
+
+  drawPlan(el, boom, gap, over, boomLen);
+}
+
+/* --- plan SVG (coordonnees en mm) --- */
+function drawPlan(el, boom, gap, over, boomLen){
+  const N=el.length;
+  const mFront=25, mBack=35;                  // marges pointe / queue (mm)
+  const maxL=el[N-1].L;
+  const W=mFront+boomLen+mBack;
+  const H=maxL+60;
+  const yc=H/2;
+  const boomSep=Math.max(gap+boom, 8);        // ecart visuel des 2 booms (mm)
+
+  let s='<svg viewBox="0 0 '+f1(W)+' '+f1(H)+'" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,Arial">';
+  // 2 booms
+  const yB1=yc-boomSep/2, yB2=yc+boomSep/2;
+  s+=line(mFront,yB1,mFront+boomLen,yB1,'var(--boom)',boom);
+  s+=line(mFront,yB2,mFront+boomLen,yB2,'var(--boom)',boom);
+  // axe pointe (alim) et queue (lame)
+  s+=txt(mFront-2,yc,'POINTE / alim.', 'end','var(--acc2)',7);
+  s+=txt(mFront+boomLen+2,yc,'QUEUE / lame 50Ω','start','var(--acc2)',7);
+
+  el.forEach((e,k)=>{
+    const X=mFront+e.pos;
+    const half=e.L/2;
+    // dipole : brins alternes haut/bas (transposition)
+    const up = (k%2===0);
+    s+=line(X, yc-half, X, yc+half, 'var(--elem)', Math.max(e.L*0.012,1.2));
+    // troux de percage (un par boom)
+    s+=dot(X,yB1,1.6); s+=dot(X,yB2,1.6);
+    // cote longueur dipole
+    s+=txt(X, yc-half-3, fmt(e.L), 'middle','var(--mut)',6);
+    // numero
+    s+=txt(X, yc+half+9, (k+1)+'', 'middle','var(--ink)',7);
+    // position depuis pointe (sous le boom)
+    if(k>0) s+=txt(X, H-6, fmt(e.pos), 'middle','var(--mut)',5.5);
+  });
+  // reglette d'echelle 100 mm
+  const sx=mFront, sy=H-18;
+  s+=line(sx,sy,sx+100,sy,'#222',1);
+  s+=line(sx,sy-2,sx,sy+2,'#222',1)+line(sx+100,sy-2,sx+100,sy+2,'#222',1);
+  s+=txt(sx+50,sy-2,'100 mm','middle','#222',6);
+  s+='</svg>';
+  document.getElementById('plan').innerHTML=s;
+  document.getElementById('planleg').textContent=
+    'Cotes en mm. Trait vertical = dipôle (longueur bout à bout). Points = trous Ø'+v('dia')
+    +' mm sur chaque boom. Chiffres sous le boom = position depuis la pointe.';
+}
+
+/* --- helpers SVG/format --- */
+function line(x1,y1,x2,y2,c,w){return '<line x1="'+f1(x1)+'" y1="'+f1(y1)+'" x2="'+f1(x2)+'" y2="'+f1(y2)+'" stroke="'+c+'" stroke-width="'+f1(w)+'" stroke-linecap="round"/>';}
+function dot(x,y,r){return '<circle cx="'+f1(x)+'" cy="'+f1(y)+'" r="'+f1(r)+'" fill="#fff" stroke="var(--acc2)" stroke-width="0.8"/>';}
+function txt(x,y,t,anchor,c,sz){return '<text x="'+f1(x)+'" y="'+f1(y)+'" text-anchor="'+anchor+'" fill="'+c+'" font-size="'+sz+'">'+t+'</text>';}
+function kpi(b,s){return '<div class="kpi"><b>'+b+'</b><span>'+s+'</span></div>';}
+function v(id){return document.getElementById(id).value;}
+function fmt(x){return (Math.round(x*10)/10).toFixed(1);}
+function f1(x){return (Math.round(x*100)/100);}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  ['flow','fhigh','npair','kfac','boom','over','gap','dia'].forEach(id=>
+    document.getElementById(id).addEventListener('input',calc));
+  calc();
+});
+</script>
+</body>
+</html>
