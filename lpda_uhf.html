@@ -7,7 +7,7 @@
              - positions de percage / plan pret a couper et percer
    Auteur  : Eric Perret (ericperret)
    Date    : 2026-05-30
-   Version : 1.1  (K auto selon L/Ø ; plan = vue dessus + vue profil, booms rouge/vert)
+   Version : 1.5  (gain estimé = montée saturante en N, plafond ~11 dBi atteint tôt)
    Note    : 100% HTML/CSS/JS, aucune dependance, aucun lien externe.
    Licence : CC BY 4.0
    ============================================================ -->
@@ -86,6 +86,7 @@
         <div><label>Débord (côté entrefer)</label><input id="over" type="number" step="0.5" value="5"></div>
         <div><label>Entrefer entre booms</label><input id="gap" type="number" step="0.5" value="10"></div>
         <div><label>Ø élément (tube)</label><input id="dia" type="number" step="0.5" value="4"></div>
+        <div><label>Marge boom / bout (coupe)</label><input id="marg" type="number" step="1" value="20"></div>
       </div>
     </fieldset>
     <div class="bar">
@@ -103,9 +104,8 @@
     <h3 style="margin:0 0 8px">Liste de coupe &amp; perçage</h3>
     <div style="overflow:auto"><table id="tbl"></table></div>
     <p class="note">
-      Coupe d'un brin = (L/2) + traverse + débord. 2 brins identiques par paire.
-      Position mesurée depuis le 1<sup>er</sup> élément (le plus court, côté pointe/alimentation).
-      « Apex » = sommet virtuel où convergent les bords des éléments.
+      Coupe d'un brin = (L/2 mesuré au centre du boom) + 5 mm (centre→bord) + débord. 2 brins identiques par paire.
+      Position mesurée depuis le bord avant du boom (marge de coupe incluse).
     </p>
   </section>
 
@@ -131,31 +131,25 @@ function kReson(ratio){           // ratio = L_nominal / diametre
   return Math.min(0.98, Math.max(0.90, k));
 }
 
-/* gain optimum (sigma_opt) approx. d'apres contours de Carrel, dBi */
-function gainDbi(tau){
-  const T=[0.80,0.82,0.84,0.86,0.88,0.90,0.92,0.95];
-  const G=[7.4, 7.7, 8.0, 8.4, 8.8, 9.4, 10.1,11.3];
-  if(tau<=T[0]) return G[0];
-  if(tau>=T[T.length-1]) return G[G.length-1];
-  for(let i=0;i<T.length-1;i++){
-    if(tau>=T[i]&&tau<=T[i+1]){
-      const f=(tau-T[i])/(T[i+1]-T[i]);
-      return G[i]+f*(G[i+1]-G[i]);
-    }
-  }
-  return G[G.length-1];
+/* gain estime (dBi) : montee saturante avec le nombre de paires N.
+   Plafond ~11 dBi (limite pratique d'une LPDA simple), atteint des ~15-18 paires.
+   Le plafond depend faiblement de tau (bande plus large -> un peu moins de gain). */
+function gainDbi(N, tau){
+  const Gmax = 8.8 + 2.4*Math.min(tau,0.97);   // ~10.5 .. 11.1 dBi
+  const G0   = 4.5;                            // plancher (N=2)
+  const g    = Gmax - (Gmax-G0)*Math.exp(-(N-2)/4);
+  return Math.max(G0, g);
 }
 
 function calc(){
   const flow=+v('flow'), fhigh=+v('fhigh'), N=Math.round(+v('npair'));
-  const boom=+v('boom'), over=+v('over'), gap=+v('gap'), dia=+v('dia');
+  const boom=+v('boom'), over=+v('over'), gap=+v('gap'), dia=+v('dia'), marg=+v('marg');
   const warn=document.getElementById('warn'); warn.textContent='';
 
   if(!(flow>0)||!(fhigh>flow)||!(N>=2)){
     warn.innerHTML='<span class="warn">Entrées invalides : f_haut &gt; f_bas &gt; 0 et N ≥ 2.</span>';
     return;
   }
-  const traverse=boom;                       // le brin traverse le carre
   const tau=Math.pow(flow/fhigh, 1/(N-1));   // facteur d'echelle
   const sigma=0.243*tau-0.051;               // espacement de gain max (Carrel)
   if(sigma<=0){
@@ -164,23 +158,26 @@ function calc(){
   }
   const tanA=(1-tau)/(4*sigma);
   const alpha=Math.atan(tanA)*180/Math.PI;   // demi-angle au sommet
-  const gain=gainDbi(tau);
+  const gain=gainDbi(N, tau);
 
   /* elements : i=0 -> le plus court (pointe/f_haut) ; i=N-1 -> le plus long (queue/f_bas) */
   const el=[];
   for(let i=0;i<N;i++){
-    const f = fhigh*Math.pow(tau,i);          // freq de resonance
-    const L = K*demiOnde_mm(f);               // longueur dipole (bout a bout)
-    const xa = (L/2)/tanA;                    // distance depuis l'apex
-    el.push({i, f, L, xa});
+    const f  = fhigh*Math.pow(tau,i);         // freq de resonance
+    const L0 = demiOnde_mm(f);                 // longueur nominale (lambda/2)
+    const K  = kReson(L0/dia);                 // correction auto selon L/Ø
+    const L  = K*L0;                           // longueur dipole reelle
+    const xa = (L/2)/tanA;                     // distance depuis l'apex
+    el.push({i, f, L, xa, K});
   }
   const x0=el[0].xa;                          // apex -> 1er element
   el.forEach((e,k)=>{
-    e.pos = e.xa - x0;                        // depuis le 1er element (pointe)
-    e.cut = e.L/2 + traverse + over;          // longueur de coupe d'un brin
+    e.pos = e.xa - x0 + marg;                 // depuis le bord avant du boom (marge incluse)
+    e.cut = e.L/2 + boom/2 + over;            // L/2 (depuis centre boom) + 5mm centre->bord + debord
     e.sp  = k===0 ? 0 : e.xa - el[k-1].xa;    // espacement avec precedent
   });
-  const boomLen = el[N-1].pos;                // 1er -> dernier element
+  const boomUtile = el[N-1].xa - x0;          // 1er -> dernier element
+  const boomTot   = boomUtile + 2*marg;       // longueur a couper
 
   /* synthese */
   document.getElementById('syn').innerHTML =
@@ -188,74 +185,91 @@ function calc(){
     kpi(sigma.toFixed(4),'σ (espacement)') +
     kpi((2*alpha).toFixed(1)+'°','Angle au sommet 2α') +
     kpi('~'+gain.toFixed(1)+' dBi','Gain estimé') +
-    kpi(fmt(boomLen)+' mm','Boom utile (1er→dernier)') +
+    kpi(fmt(boomTot)+' mm','Boom à couper (+2 marges)') +
     kpi(fmt(el[N-1].cut)+' mm','Brin le plus long') ;
 
   /* tableau (pointe -> queue) */
-  let h='<thead><tr><th>Élt</th><th>Rôle</th><th>f rés. (MHz)</th>'
-      +'<th>L dipôle (mm)</th><th>Coupe brin (mm)</th>'
-      +'<th>Espac. préc. (mm)</th><th>Pos. / pointe (mm)</th><th>Pos. / apex (mm)</th></tr></thead><tbody>';
+  let h='<thead><tr><th>Pos.</th><th>Orientation</th><th>f rés. (MHz)</th>'
+      +'<th>K</th><th>L dipôle (mm)</th><th>Coupe brin (mm) ×2</th>'
+      +'<th>Espac. préc. (mm)</th><th>Pos. / pointe (mm)</th></tr></thead><tbody>';
   el.forEach((e,k)=>{
-    const role = k===0?'pointe (alim.)' : (k===N-1?'queue (lame 50Ω)':'');
-    h+='<tr><td>'+(k+1)+'</td><td>'+role+'</td><td>'+e.f.toFixed(1)+'</td>'
-      +'<td>'+fmt(e.L)+'</td><td><b>'+fmt(e.cut)+'</b></td>'
-      +'<td>'+(k===0?'—':fmt(e.sp))+'</td><td>'+fmt(e.pos)+'</td><td>'+fmt(e.xa)+'</td></tr>';
+    const ori = (k%2===0)?'rouge G / vert D':'rouge D / vert G';
+    h+='<tr><td>'+(k+1)+'</td><td>'+ori+'</td><td>'+e.f.toFixed(1)+'</td>'
+      +'<td>'+e.K.toFixed(3)+'</td><td>'+fmt(e.L)+'</td><td><b>'+fmt(e.cut)+'</b></td>'
+      +'<td>'+(k===0?'—':fmt(e.sp))+'</td><td>'+fmt(e.pos)+'</td></tr>';
   });
   h+='</tbody>';
   document.getElementById('tbl').innerHTML=h;
 
-  drawPlan(el, boom, gap, over, boomLen);
+  drawPlan(el, boom, gap, over, boomUtile, dia, marg);
 }
 
-/* --- plan SVG (coordonnees en mm) --- */
-function drawPlan(el, boom, gap, over, boomLen){
+/* --- plan SVG (coordonnees en mm). Rouge = boom superieur, Vert = boom inferieur. --- */
+function drawPlan(el, boom, gap, over, boomLen, dia, marg){
   const N=el.length;
-  const mFront=25, mBack=35;                  // marges pointe / queue (mm)
-  const maxL=el[N-1].L;
+  const mFront=25, mBack=35;                  // marges DESSIN pointe / queue (mm)
   const W=mFront+boomLen+mBack;
-  const H=maxL+60;
-  const yc=H/2;
-  const boomSep=Math.max(gap+boom, 8);        // ecart visuel des 2 booms (mm)
+  const PX=e=>mFront+(e.pos-marg);            // position relative (plan didactique, sans marge)
+  // a chaque position : demi rouge d'un cote, demi vert de l'autre ; sens inverse 1 pos./2.
+  const redUp = k => (k%2===0);               // pos impaire(1,3..) : rouge en haut
 
-  let s='<svg viewBox="0 0 '+f1(W)+' '+f1(H)+'" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,Arial">';
-  // 2 booms
-  const yB1=yc-boomSep/2, yB2=yc+boomSep/2;
-  s+=line(mFront,yB1,mFront+boomLen,yB1,'var(--boom)',boom);
-  s+=line(mFront,yB2,mFront+boomLen,yB2,'var(--boom)',boom);
-  // axe pointe (alim) et queue (lame)
-  s+=txt(mFront-2,yc,'POINTE / alim.', 'end','var(--acc2)',7);
-  s+=txt(mFront+boomLen+2,yc,'QUEUE / lame 50Ω','start','var(--acc2)',7);
-
+  /* ---------- VUE DE DESSUS ----------
+     un seul corps de boom (le rouge ; le vert est masque dessous, meme percage). */
+  const maxHalf=el[N-1].L/2;
+  const Ht=2*maxHalf+48;
+  const yc=Ht/2;
+  let t='<svg viewBox="0 0 '+f1(W)+' '+f1(Ht)+'" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,Arial">';
+  t+=rect(mFront, yc-boom/2, boomLen, boom, 'var(--boom)', 0.16);
+  t+=line(mFront,yc,mFront+boomLen,yc,'var(--boom)',0.5);
+  t+=txt(mFront-2,yc-boom-2,'POINTE / alim.','end','var(--acc2)',7);
+  t+=txt(mFront+boomLen+2,yc-boom-2,'QUEUE / lame 50Ω','start','var(--acc2)',7);
   el.forEach((e,k)=>{
-    const X=mFront+e.pos;
-    const half=e.L/2;
-    // dipole : brins alternes haut/bas (transposition)
-    const up = (k%2===0);
-    s+=line(X, yc-half, X, yc+half, 'var(--elem)', Math.max(e.L*0.012,1.2));
-    // troux de percage (un par boom)
-    s+=dot(X,yB1,1.6); s+=dot(X,yB2,1.6);
-    // cote longueur dipole
-    s+=txt(X, yc-half-3, fmt(e.L), 'middle','var(--mut)',6);
-    // numero
-    s+=txt(X, yc+half+9, (k+1)+'', 'middle','var(--ink)',7);
-    // position depuis pointe (sous le boom)
-    if(k>0) s+=txt(X, H-6, fmt(e.pos), 'middle','var(--mut)',5.5);
+    const X=PX(e), half=e.L/2, w=Math.max(e.L*0.012,1.3);
+    const rTip = redUp(k) ? yc-half : yc+half;   // demi rouge
+    const gTip = redUp(k) ? yc+half : yc-half;   // demi vert (oppose)
+    t+=line(X, yc, X, rTip, 'var(--red)',   w);
+    t+=line(X, yc, X, gTip, 'var(--green)', w);
+    t+=dot(X,yc,1.7,'var(--boom)');               // percage (identique sur les 2 booms)
+    t+=txt(X, (rTip<yc?rTip:gTip)-3, fmt(e.L), 'middle','var(--mut)',6);
+    t+=txt(X, Ht-16, (k+1)+'', 'middle','var(--ink)',7);
+    if(k>0) t+=txt(X, Ht-6, fmt(e.pos-marg), 'middle','var(--mut)',5.5);
   });
-  // reglette d'echelle 100 mm
-  const sx=mFront, sy=H-18;
-  s+=line(sx,sy,sx+100,sy,'#222',1);
-  s+=line(sx,sy-2,sx,sy+2,'#222',1)+line(sx+100,sy-2,sx+100,sy+2,'#222',1);
-  s+=txt(sx+50,sy-2,'100 mm','middle','#222',6);
-  s+='</svg>';
-  document.getElementById('plan').innerHTML=s;
+  t+=scaleBar(mFront, Ht-26);
+  t+='</svg>';
+  document.getElementById('planTop').innerHTML=t;
+
+  /* ---------- VUE DE PROFIL ----------
+     deux booms empiles, MEME percage (miroir) : un point sur chaque boom a chaque position. */
+  const top0=12, redY=top0, greenY=redY+boom+gap;
+  const Hp=greenY+boom+18;
+  const redC=redY+boom/2, greenC=greenY+boom/2;
+  const r=Math.max(dia/2,1.4);
+  let p='<svg viewBox="0 0 '+f1(W)+' '+f1(Hp)+'" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,Arial">';
+  p+=rect(mFront, redY,   boomLen, boom, 'var(--red)',   0.20)+line(mFront,redY,mFront+boomLen,redY,'var(--red)',0.4)+line(mFront,redY+boom,mFront+boomLen,redY+boom,'var(--red)',0.4);
+  p+=rect(mFront, greenY, boomLen, boom, 'var(--green)', 0.20)+line(mFront,greenY,mFront+boomLen,greenY,'var(--green)',0.4)+line(mFront,greenY+boom,mFront+boomLen,greenY+boom,'var(--green)',0.4);
+  p+=txt(mFront-2, redC,   'rouge (haut)','end','var(--red)',6);
+  p+=txt(mFront-2, greenC, 'vert (bas)','end','var(--green)',6);
+  el.forEach((e,k)=>{
+    const X=PX(e);
+    p+=dot(X, redC,   r, 'var(--red)');           // percage boom haut
+    p+=dot(X, greenC, r, 'var(--green)');         // percage boom bas (identique)
+    p+=txt(X, redY-3, (k+1)+'', 'middle','var(--ink)',6);
+  });
+  p+=scaleBar(mFront, Hp-4);
+  p+='</svg>';
+  document.getElementById('planSide').innerHTML=p;
+
   document.getElementById('planleg').textContent=
-    'Cotes en mm. Trait vertical = dipôle (longueur bout à bout). Points = trous Ø'+v('dia')
-    +' mm sur chaque boom. Chiffres sous le boom = position depuis la pointe.';
+    'Cotes en mm. À chaque position : un demi-élément rouge (boom haut) d\'un côté et un demi-élément vert (boom bas) du côté opposé ; '
+    +'le sens s\'inverse à chaque position (transposition). Les deux booms ont le MÊME perçage (miroir), Ø'+dia+' mm. '
+    +'L = longueur globale bord à bord. Profil : booms empilés, entrefer '+gap+' mm.';
 }
 
 /* --- helpers SVG/format --- */
+function rect(x,y,w,h,c,op){return '<rect x="'+f1(x)+'" y="'+f1(y)+'" width="'+f1(w)+'" height="'+f1(h)+'" fill="'+c+'" fill-opacity="'+op+'" stroke="'+c+'" stroke-width="0.4"/>';}
+function scaleBar(sx,sy){return line(sx,sy,sx+100,sy,'#222',1)+line(sx,sy-2,sx,sy+2,'#222',1)+line(sx+100,sy-2,sx+100,sy+2,'#222',1)+txt(sx+50,sy-2,'100 mm','middle','#222',6);}
 function line(x1,y1,x2,y2,c,w){return '<line x1="'+f1(x1)+'" y1="'+f1(y1)+'" x2="'+f1(x2)+'" y2="'+f1(y2)+'" stroke="'+c+'" stroke-width="'+f1(w)+'" stroke-linecap="round"/>';}
-function dot(x,y,r){return '<circle cx="'+f1(x)+'" cy="'+f1(y)+'" r="'+f1(r)+'" fill="#fff" stroke="var(--acc2)" stroke-width="0.8"/>';}
+function dot(x,y,r,c){return '<circle cx="'+f1(x)+'" cy="'+f1(y)+'" r="'+f1(r)+'" fill="#fff" stroke="'+(c||'var(--acc2)')+'" stroke-width="0.8"/>';}
 function txt(x,y,t,anchor,c,sz){return '<text x="'+f1(x)+'" y="'+f1(y)+'" text-anchor="'+anchor+'" fill="'+c+'" font-size="'+sz+'">'+t+'</text>';}
 function kpi(b,s){return '<div class="kpi"><b>'+b+'</b><span>'+s+'</span></div>';}
 function v(id){return document.getElementById(id).value;}
@@ -263,7 +277,7 @@ function fmt(x){return (Math.round(x*10)/10).toFixed(1);}
 function f1(x){return (Math.round(x*100)/100);}
 
 window.addEventListener('DOMContentLoaded',()=>{
-  ['flow','fhigh','npair','kfac','boom','over','gap','dia'].forEach(id=>
+  ['flow','fhigh','npair','boom','over','gap','dia','marg'].forEach(id=>
     document.getElementById(id).addEventListener('input',calc));
   calc();
 });
