@@ -3,7 +3,7 @@
   Objet    : Présentation du calculateur d'antenne log-périodique UHF (dépôt GitHub)
   Auteur   : Eric Perret (ericperret)
   Date     : 2026-10-18
-  Version  : 1.6
+  Version  : 1.7
   Licence  : CC BY 4.0
 -->
 
@@ -13,7 +13,7 @@
 
 ▶️ **[Lancer le calculateur](https://ericperret.github.io/lpda/lpda_uhf.html)** — le calcul se fait à chaque saisie.
 
-![Calculateur LPDA UHF v1.6 : synthèse, liste de coupe, vue de dessus et vue de profil](screenshot.png)
+![Calculateur LPDA UHF v1.7 : synthèse, liste de coupe, vues de dessus (ensemble, boom haut, boom bas) et vue de profil](screenshot.png)
 
 Calculateur autonome (un seul fichier HTML) d'antenne log-périodique à deux booms carrés, pour la bande UHF.
 À partir de la bande voulue et du nombre de dipôles, il donne les longueurs de coupe, l'angle optimal, les positions de perçage et un plan à l'échelle prêt à imprimer.
@@ -23,7 +23,7 @@ Interface en français. Aucune installation, aucune librairie, aucune connexion 
 ## Utilisation
 
 1. Ouvrir le lien ci-dessus, ou télécharger `lpda_uhf.html` et l'ouvrir dans un navigateur récent.
-2. Saisir la bande (f_bas, f_haut), le nombre de paires N et la mécanique (boom, débord, entrefer, Ø des éléments, marge de coupe).
+2. Saisir la bande (f_bas, f_haut), le nombre de paires N et la mécanique (boom, débord, entrefer, Ø des éléments, marge totale du boom : moitié pointe, moitié queue).
 3. Les résultats se mettent à jour à chaque saisie ; **Imprimer le plan** sort le plan sans les champs de saisie.
 
 ## Fonctions
@@ -58,6 +58,7 @@ Outil de pré-dimensionnement. Le gain est une estimation ; l'adaptation à 50 �
 | 1.1 | Facteur K automatique selon L/Ø ; plan en vue de dessus et vue de profil, booms rouge / vert |
 | 1.5 | Gain estimé par montée saturante en N ; marge de coupe du boom ; coupe mesurée depuis le centre du boom |
 | 1.6 | Charte graphique AZS (thème sombre à l'écran, bandeau AZS avec lien de retour vers www.azs.fr) ; le plan reste sur fond blanc et l'impression est inchangée |
+| 1.7 | Marge totale du boom répartie moitié pointe, moitié queue et dessinée sur le plan ; alerte s'il reste moins de 5 mm de métal entre le trou et le bout du boom ; vues de dessus séparées du boom haut (rouge) et du boom bas (vert) avec la coupe et le côté de chaque brin ; libellés du plan dans le cadre |
 
 ## Licence
 

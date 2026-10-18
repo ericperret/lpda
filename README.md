@@ -3,7 +3,7 @@
   Purpose  : Overview of the UHF log-periodic antenna calculator (GitHub repository)
   Author   : Eric Perret (ericperret)
   Date     : 2026-10-18
-  Version  : 1.6
+  Version  : 1.7
   License  : CC BY 4.0
 -->
 
@@ -13,7 +13,7 @@
 
 ▶️ **[Launch the calculator](https://ericperret.github.io/lpda/lpda_uhf.html)** — results update on every input.
 
-![UHF LPDA calculator v1.6: summary, cut list, top view and side view](screenshot.png)
+![UHF LPDA calculator v1.7: summary, cut list, top views (assembled, upper boom, lower boom) and side view](screenshot.png)
 
 A standalone calculator (one single HTML file) for a log-periodic antenna built on two square booms, for the UHF band.
 From the wanted band and the number of dipoles, it gives the cut lengths, the optimum angle, the drilling positions and a scale plan ready to print.
@@ -23,7 +23,7 @@ User interface in French. No installation, no library, no network connection req
 ## Usage
 
 1. Open the link above, or download `lpda_uhf.html` and open it in a recent browser.
-2. Enter the band (f_bas = low, f_haut = high), the number of pairs N and the mechanics (boom side, overhang, gap between booms, element Ø, cutting margin).
+2. Enter the band (f_bas = low, f_haut = high), the number of pairs N and the mechanics (boom side, overhang, gap between booms, element Ø, total boom margin: half at the tip, half at the tail).
 3. Results update on every input; **Imprimer le plan** (print the plan) prints the plan without the input fields.
 
 ## Features
@@ -58,6 +58,7 @@ Preliminary design tool. The gain is an estimate; the 50 Ω matching (stub at th
 | 1.1 | Automatic K factor from L/Ø; top and side views, red / green booms |
 | 1.5 | Gain estimated by a saturating rise with N; boom cutting margin; cut measured from the boom centre |
 | 1.6 | AZS visual identity (dark theme on screen, AZS band linking back to www.azs.fr); the plan stays on a white sheet and printing is unchanged |
+| 1.7 | Total boom margin split half at the tip, half at the tail and drawn on the plan; warning when less than 5 mm of metal remains between the hole and the boom end; separate top views of the upper (red) and lower (green) booms with each element's cut length and side; plan labels kept inside the frame |
 
 ## License
 
