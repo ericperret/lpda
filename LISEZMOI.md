@@ -2,8 +2,8 @@
   Nom      : LISEZMOI.md
   Objet    : Présentation du calculateur d'antenne log-périodique UHF (dépôt GitHub)
   Auteur   : Eric Perret (ericperret)
-  Date     : 2026-10-17
-  Version  : 1.5
+  Date     : 2026-10-18
+  Version  : 1.6
   Licence  : CC BY 4.0
 -->
 
@@ -13,7 +13,7 @@
 
 ▶️ **[Lancer le calculateur](https://ericperret.github.io/lpda/lpda_uhf.html)** — le calcul se fait à chaque saisie.
 
-![Calculateur LPDA UHF v1.5 : synthèse, liste de coupe, vue de dessus et vue de profil](screenshot.png)
+![Calculateur LPDA UHF v1.6 : synthèse, liste de coupe, vue de dessus et vue de profil](screenshot.png)
 
 Calculateur autonome (un seul fichier HTML) d'antenne log-périodique à deux booms carrés, pour la bande UHF.
 À partir de la bande voulue et du nombre de dipôles, il donne les longueurs de coupe, l'angle optimal, les positions de perçage et un plan à l'échelle prêt à imprimer.
@@ -57,6 +57,7 @@ Outil de pré-dimensionnement. Le gain est une estimation ; l'adaptation à 50 �
 |---|---|
 | 1.1 | Facteur K automatique selon L/Ø ; plan en vue de dessus et vue de profil, booms rouge / vert |
 | 1.5 | Gain estimé par montée saturante en N ; marge de coupe du boom ; coupe mesurée depuis le centre du boom |
+| 1.6 | Charte graphique AZS (thème sombre à l'écran, bandeau AZS avec lien de retour vers www.azs.fr) ; le plan reste sur fond blanc et l'impression est inchangée |
 
 ## Licence
 

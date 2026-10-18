@@ -2,8 +2,8 @@
   Name     : README.md
   Purpose  : Overview of the UHF log-periodic antenna calculator (GitHub repository)
   Author   : Eric Perret (ericperret)
-  Date     : 2026-10-17
-  Version  : 1.5
+  Date     : 2026-10-18
+  Version  : 1.6
   License  : CC BY 4.0
 -->
 
@@ -13,7 +13,7 @@
 
 ▶️ **[Launch the calculator](https://ericperret.github.io/lpda/lpda_uhf.html)** — results update on every input.
 
-![UHF LPDA calculator v1.5: summary, cut list, top view and side view](screenshot.png)
+![UHF LPDA calculator v1.6: summary, cut list, top view and side view](screenshot.png)
 
 A standalone calculator (one single HTML file) for a log-periodic antenna built on two square booms, for the UHF band.
 From the wanted band and the number of dipoles, it gives the cut lengths, the optimum angle, the drilling positions and a scale plan ready to print.
@@ -57,6 +57,7 @@ Preliminary design tool. The gain is an estimate; the 50 Ω matching (stub at th
 |---|---|
 | 1.1 | Automatic K factor from L/Ø; top and side views, red / green booms |
 | 1.5 | Gain estimated by a saturating rise with N; boom cutting margin; cut measured from the boom centre |
+| 1.6 | AZS visual identity (dark theme on screen, AZS band linking back to www.azs.fr); the plan stays on a white sheet and printing is unchanged |
 
 ## License
 
