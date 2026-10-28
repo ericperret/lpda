@@ -1,0 +1,39 @@
+# ==============================================================================
+#  Nom / Name : CITATION.cff
+#  Projet     : lpda — https://github.com/ericperret/lpda
+#  Auteur     : Eric PERRET
+#  Date       : 2026-10-27
+#  Version    : 1.0
+#  Objet      : métadonnées de citation (bouton « Cite this repository » de GitHub)
+#  Licence    : CC BY-NC 4.0 — usage commercial sur autorisation écrite (eperret@azs.fr)
+# ==============================================================================
+cff-version: 1.2.0
+message: "If you use or cite this work, please credit it as below. / Merci de citer ce travail comme ci-dessous."
+type: software
+title: "UHF log-periodic dipole antenna (LPDA) calculator"
+abstract: "UHF log-periodic dipole antenna (LPDA) calculator: element lengths, optimum angle (Carrel), drilling positions and printable scale plan for a two-boom build. Single HTML file."
+authors:
+  - family-names: "PERRET"
+    given-names: "Eric"
+    email: "eperret@azs.fr"
+repository-code: "https://github.com/ericperret/lpda"
+url: "https://ericperret.github.io/lpda/lpda_uhf.html"
+license: CC-BY-NC-4.0
+date-released: "2026-10-27"
+keywords:
+  - antenna
+  - lpda
+  - log-periodic-antenna
+  - antenna-design
+  - uhf
+  - ham-radio
+  - amateur-radio
+  - rf
+  - rf-engineering
+  - calculator
+  - diy
+  - sdr
+  - html5
+  - vanilla-javascript
+  - no-dependencies
+  - offline

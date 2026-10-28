@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<!-- ============================================================
+   Nom     : lpda_uhf.html
+   Objet   : Calculateur d'antenne log-periodique (LPDA) UHF
+             - longueurs d'elements (longueur de coupe d'un brin)
+             - angle optimal (gain max, Carrel)
+             - positions de percage / plan pret a couper et percer
+   Auteur  : Eric Perret (ericperret)
+   Date    : 2026-10-27
+   Version : 1.7.1
+   Note    : 100% HTML/CSS/JS, aucune dependance, aucune ressource externe
+             (seul lien : retour vers www.azs.fr).
+   Histo.  : 1.5 2026-05-30 gain estimé = montée saturante en N, plafond
+             ~11 dBi atteint tôt ; 1.6 2026-10-18 charte graphique AZS
+             (thème sombre à l'écran, plan conservé sur fond blanc,
+             impression inchangée, bandeau AZS) ; 1.7 2026-10-18 marge
+             totale répartie moitié pointe / moitié queue et dessinée,
+             alerte si moins de 5 mm de métal autour du trou, vues de
+             dessus séparées boom haut / boom bas, libellés dans le cadre
+   Licence : CC BY-NC 4.0 — usage commercial interdit sans autorisation écrite (eperret@azs.fr)
+   ============================================================ -->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LPDA UHF — calcul & plan</title>
+<style>
+  /* ---------- charte AZS (www.azs.fr) ---------- */
+  :root{
+    --bg:#0e1418; --pan:#18222a; --pan2:#141c22; --ink:#dfe7ec; --mut:#8fa1ad;
+    --line:#26343e; --acc:#f0a63a; --acc2:#5cc8d6; --ok:#3fb950; --warn:#f85149;
+    --boom:#3a4650; --elem:#0b6e99;
+    --red:#c62828; --green:#2e7d32;
+    --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace; --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--sans)}
+  .azs-barre{display:flex;align-items:center;gap:12px;padding:8px 18px;background:var(--pan2);border-bottom:1px solid var(--line);
+    font:600 11px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+  .azs-barre .azs{font:800 20px/1 var(--mono);letter-spacing:-1px;text-transform:none;color:var(--acc);text-decoration:none;padding-right:12px;border-right:1px solid var(--line)}
+  .azs-barre .azs:hover{color:#ffcf7a}
+  .azs-barre a.fil{color:var(--mut);text-decoration:none} .azs-barre a.fil:hover{color:var(--acc)}
+  header{padding:16px 18px;border-bottom:1px solid var(--line)}
+  h1{margin:0;font-size:20px;letter-spacing:-.2px}
+  h1 small{color:var(--mut);font-weight:400;font-size:13px}
+  main{max-width:1080px;margin:0 auto;padding:16px}
+  .panel{background:var(--pan);border:1px solid var(--line);border-radius:8px;
+    padding:14px 16px;margin-bottom:14px;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 10px 30px -18px rgba(0,0,0,.8)}
+  .panel h3{display:flex;align-items:center;gap:8px}
+  .panel h3::before{content:"";width:3px;height:1em;border-radius:2px;background:var(--acc);flex:none}
+  .panel h4{font:600 11px var(--mono)!important;letter-spacing:.06em;text-transform:uppercase}
+  fieldset{border:1px solid var(--line);border-radius:6px;margin:0 0 10px;padding:10px 12px}
+  legend{color:var(--acc);font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:0 6px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+  label{display:block;font-size:12px;color:var(--mut);margin-bottom:3px}
+  input{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;
+    font:13px var(--mono);background:var(--pan2);color:var(--ink)}
+  input:focus{outline:2px solid var(--acc);outline-offset:-1px;border-color:var(--acc)}
+  .syn{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .kpi{background:var(--pan2);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+  .kpi b{display:block;font:600 20px var(--mono);color:var(--acc2)}
+  .kpi span{color:var(--mut);font-size:12px}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th,td{border:1px solid var(--line);padding:5px 8px;text-align:right}
+  td{font-family:var(--mono)}
+  th{background:var(--pan2);color:var(--mut);font-weight:600;text-align:right}
+  th:first-child,td:first-child{text-align:left}
+  tbody tr:nth-child(odd){background:rgba(255,255,255,.02)}
+  .note{color:var(--mut);font-size:12px;margin:8px 0 0}
+  .warn{color:var(--warn);font-weight:600}
+  button{font:600 14px var(--sans);padding:8px 16px;border:1px solid var(--acc);background:var(--acc);
+    color:#111;border-radius:6px;cursor:pointer;transition:filter .15s,border-color .15s,color .15s}
+  button:hover{filter:brightness(1.1)}
+  button.sec{background:transparent;color:var(--ink);border-color:var(--line);font-weight:500}
+  button.sec:hover{filter:none;border-color:var(--acc)}
+  .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  /* le plan reste un dessin technique sur fond blanc, couleurs d'origine */
+  svg{width:100%;height:auto;background:#fff;border:1px solid var(--line);border-radius:6px;
+    --ink:#16202a;--mut:#5a6b7a;--boom:#3a4650;--acc2:#b4541a;--red:#c62828;--green:#2e7d32}
+  .legend-svg{font-size:12px;color:var(--mut);margin-top:6px}
+  @media print{
+    :root{--bg:#fff;--pan:#fff;--pan2:#eef3f6;--ink:#16202a;--mut:#5a6b7a;--line:#cdd6de;--acc2:#b4541a;color-scheme:light}
+    .azs-barre,header,.controls,.bar{display:none}
+    body{background:#fff}
+    .panel{border:none;box-shadow:none;page-break-inside:avoid}
+    .kpi b{color:#16202a}
+    main{max-width:none;padding:0}
+  }
+</style>
+</head>
+<body>
+<nav class="azs-barre"><a class="azs" href="https://www.azs.fr/" title="www.azs.fr">AZS</a><a class="fil" href="https://github.com/ericperret/lpda">lpda</a></nav>
+<header>
+  <h1>Antenne log-périodique UHF <small>— longueurs, angle optimal, plan de perçage</small></h1>
+</header>
+
+<main>
+  <section class="panel controls">
+    <fieldset>
+      <legend>Bande &amp; éléments</legend>
+      <div class="grid">
+        <div><label>Fréquence basse f_bas (MHz)</label><input id="flow" type="number" step="1" value="400"></div>
+        <div><label>Fréquence haute f_haut (MHz)</label><input id="fhigh" type="number" step="1" value="1000"></div>
+        <div><label>Nombre de paires N (dipôles)</label><input id="npair" type="number" step="1" value="8"></div>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Mécanique (mm)</legend>
+      <div class="grid">
+        <div><label>Côté du boom carré</label><input id="boom" type="number" step="0.5" value="10"></div>
+        <div><label>Débord (côté entrefer)</label><input id="over" type="number" step="0.5" value="5"></div>
+        <div><label>Entrefer entre booms</label><input id="gap" type="number" step="0.5" value="10"></div>
+        <div><label>Ø élément (tube)</label><input id="dia" type="number" step="0.5" value="4"></div>
+        <div><label>Marge totale du boom (pointe + queue)</label><input id="marg" type="number" step="1" value="20"></div>
+      </div>
+    </fieldset>
+    <div class="bar">
+      <button onclick="calc()">Calculer</button>
+      <button class="sec" onclick="window.print()">Imprimer le plan</button>
+    </div>
+  </section>
+
+  <section class="panel" id="synPanel">
+    <div class="syn" id="syn"></div>
+    <p class="note" id="warn"></p>
+  </section>
+
+  <section class="panel">
+    <h3 style="margin:0 0 8px">Liste de coupe &amp; perçage</h3>
+    <div style="overflow:auto"><table id="tbl"></table></div>
+    <p class="note">
+      Coupe d'un brin = (L/2 mesuré au centre du boom) + 5 mm (centre→bord) + débord. 2 brins identiques par paire.
+      Position mesurée depuis le bord avant du boom (marge de coupe incluse).
+    </p>
+  </section>
+
+  <section class="panel">
+    <h3 style="margin:0 0 8px">Plan (à l'échelle)</h3>
+    <h4 style="margin:6px 0 4px;color:var(--mut);font-weight:600">Vue de dessus — ensemble (booms superposés)</h4>
+    <div id="planTop"></div>
+    <h4 style="margin:14px 0 4px;color:var(--mut);font-weight:600">Vue de dessus — boom haut (rouge) seul</h4>
+    <div id="planRed"></div>
+    <h4 style="margin:14px 0 4px;color:var(--mut);font-weight:600">Vue de dessus — boom bas (vert) seul</h4>
+    <div id="planGreen"></div>
+    <h4 style="margin:14px 0 4px;color:var(--mut);font-weight:600">Vue de profil</h4>
+    <div id="planSide"></div>
+    <p class="legend-svg" id="planleg"></p>
+  </section>
+</main>
+
+<script>
+"use strict";
+/* --- physique --- */
+function demiOnde_mm(fMHz){ return 149896.229 / fMHz; }   // lambda/2 en mm (c=299792.458 km/s)
+
+/* correction de resonance d'un dipole cylindrique selon le rapport L/Ø.
+   Optimum calcule (pas une saisie) : plus l'element est "gros", plus K baisse. */
+function kReson(ratio){           // ratio = L_nominal / diametre
+  let k = 0.975 - 0.18/Math.sqrt(ratio);
+  return Math.min(0.98, Math.max(0.90, k));
+}
+
+/* gain estime (dBi) : montee saturante avec le nombre de paires N.
+   Plafond ~11 dBi (limite pratique d'une LPDA simple), atteint des ~15-18 paires.
+   Le plafond depend faiblement de tau (bande plus large -> un peu moins de gain). */
+function gainDbi(N, tau){
+  const Gmax = 8.8 + 2.4*Math.min(tau,0.97);   // ~10.5 .. 11.1 dBi
+  const G0   = 4.5;                            // plancher (N=2)
+  const g    = Gmax - (Gmax-G0)*Math.exp(-(N-2)/4);
+  return Math.max(G0, g);
+}
+
+function calc(){
+  const flow=+v('flow'), fhigh=+v('fhigh'), N=Math.round(+v('npair'));
+  const boom=+v('boom'), over=+v('over'), gap=+v('gap'), dia=+v('dia'), marg=+v('marg');
+  const warn=document.getElementById('warn'); warn.textContent='';
+  const margE=marg/2;                          // marge a chaque bout (pointe, queue)
+
+  if(!(flow>0)||!(fhigh>flow)||!(N>=2)){
+    warn.innerHTML='<span class="warn">Entrées invalides : f_haut &gt; f_bas &gt; 0 et N ≥ 2.</span>';
+    return;
+  }
+  const tau=Math.pow(flow/fhigh, 1/(N-1));   // facteur d'echelle
+  const sigma=0.243*tau-0.051;               // espacement de gain max (Carrel)
+  if(sigma<=0){
+    warn.innerHTML='<span class="warn">Trop peu d\'éléments pour cette bande (σ ≤ 0). Augmente N ou réduis la bande.</span>';
+    return;
+  }
+  const tanA=(1-tau)/(4*sigma);
+  const alpha=Math.atan(tanA)*180/Math.PI;   // demi-angle au sommet
+  const gain=gainDbi(N, tau);
+
+  /* elements : i=0 -> le plus court (pointe/f_haut) ; i=N-1 -> le plus long (queue/f_bas) */
+  const el=[];
+  for(let i=0;i<N;i++){
+    const f  = fhigh*Math.pow(tau,i);         // freq de resonance
+    const L0 = demiOnde_mm(f);                 // longueur nominale (lambda/2)
+    const K  = kReson(L0/dia);                 // correction auto selon L/Ø
+    const L  = K*L0;                           // longueur dipole reelle
+    const xa = (L/2)/tanA;                     // distance depuis l'apex
+    el.push({i, f, L, xa, K});
+  }
+  const x0=el[0].xa;                          // apex -> 1er element
+  el.forEach((e,k)=>{
+    e.pos = e.xa - x0 + margE;                // depuis le bord avant du boom (marge de pointe incluse)
+    e.cut = e.L/2 + boom/2 + over;            // L/2 (depuis centre boom) + 5mm centre->bord + debord
+    e.sp  = k===0 ? 0 : e.xa - el[k-1].xa;    // espacement avec precedent
+  });
+  const boomUtile = el[N-1].xa - x0;          // 1er -> dernier element
+  const boomTot   = boomUtile + marg;         // longueur a couper (marge pointe + marge queue)
+  const metal     = margE - dia/2;            // metal entre le bord du trou et le bout du boom
+  if(metal < 5){
+    warn.innerHTML='<span class="warn">Marge insuffisante : '+fmt(metal)+' mm de métal entre le trou et le bout du boom (5 mm minimum, soit une marge totale d\'au moins '+fmt(2*(dia/2+5))+' mm).</span>';
+  }
+
+  /* synthese */
+  document.getElementById('syn').innerHTML =
+    kpi(tau.toFixed(4),'τ (échelle)') +
+    kpi(sigma.toFixed(4),'σ (espacement)') +
+    kpi((2*alpha).toFixed(1)+'°','Angle au sommet 2α') +
+    kpi('~'+gain.toFixed(1)+' dBi','Gain estimé') +
+    kpi(fmt(boomTot)+' mm','Boom à couper (marges incluses)') +
+    kpi(fmt(el[N-1].cut)+' mm','Brin le plus long') ;
+
+  /* tableau (pointe -> queue) */
+  let h='<thead><tr><th>Pos.</th><th>Orientation</th><th>f rés. (MHz)</th>'
+      +'<th>K</th><th>L dipôle (mm)</th><th>Coupe brin (mm) ×2</th>'
+      +'<th>Espac. préc. (mm)</th><th>Pos. / pointe (mm)</th></tr></thead><tbody>';
+  el.forEach((e,k)=>{
+    const ori = (k%2===0)?'rouge G / vert D':'rouge D / vert G';
+    h+='<tr><td>'+(k+1)+'</td><td>'+ori+'</td><td>'+e.f.toFixed(1)+'</td>'
+      +'<td>'+e.K.toFixed(3)+'</td><td>'+fmt(e.L)+'</td><td><b>'+fmt(e.cut)+'</b></td>'
+      +'<td>'+(k===0?'—':fmt(e.sp))+'</td><td>'+fmt(e.pos)+'</td></tr>';
+  });
+  h+='</tbody>';
+  document.getElementById('tbl').innerHTML=h;
+
+  drawPlan(el, boom, gap, over, boomTot, dia, margE);
+}
+
+/* --- plan SVG (coordonnees en mm). Rouge = boom superieur, Vert = boom inferieur.
+   Le boom est dessine sur sa longueur reelle (marges incluses) ; X = position depuis le bord avant. --- */
+function drawPlan(el, boom, gap, over, boomTot, dia, margE){
+  const N=el.length;
+  const m=6;                                  // marge DESSIN de chaque cote (mm)
+  const W=m+boomTot+m;
+  const PX=e=>m+e.pos;
+  // a chaque position : demi rouge d'un cote, demi vert de l'autre ; sens inverse 1 pos./2.
+  const redUp = k => (k%2===0);               // pos impaire(1,3..) : rouge en haut (G)
+  const maxHalf=el[N-1].L/2;
+  const yc=22+maxHalf;                        // bandeau de libelles en haut
+  const Ht=yc+maxHalf+48;                     // place pour la cote sous la pointe basse et le pied
+  function entete(){
+    return txt(1.5,8,'◀ POINTE / alim.','start','var(--acc2)',7)
+          +txt(W-1.5,8,'QUEUE / lame 50Ω ▶','end','var(--acc2)',7);
+  }
+  function corpsBoom(c,op){
+    return rect(m, yc-boom/2, boomTot, boom, c, op)+line(m,yc,m+boomTot,yc,c,0.4);
+  }
+  function piedPositions(){
+    let q='';
+    el.forEach((e,k)=>{ const X=PX(e);
+      q+=txt(X, Ht-16, (k+1)+'', 'middle','var(--ink)',7);
+      q+=txt(X, Ht-6, fmt(e.pos), 'middle','var(--mut)',5.5); });
+    return q+scaleBar(m, Ht-28);
+  }
+
+  /* ---------- VUE D'ENSEMBLE : les deux booms superposes (meme percage) ---------- */
+  let t='<svg viewBox="0 0 '+f1(W)+' '+f1(Ht)+'" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,Arial">';
+  t+=entete()+corpsBoom('var(--boom)',0.16);
+  el.forEach((e,k)=>{
+    const X=PX(e), half=e.L/2, w=Math.max(e.L*0.012,1.3);
+    const rTip = redUp(k) ? yc-half : yc+half;
+    const gTip = redUp(k) ? yc+half : yc-half;
+    t+=line(X, yc, X, rTip, 'var(--red)',   w);
+    t+=line(X, yc, X, gTip, 'var(--green)', w);
+    t+=dot(X,yc,Math.max(dia/2,1.4),'var(--boom)');
+    t+=txt(X, (rTip<yc?rTip:gTip)-3, fmt(e.L), 'middle','var(--mut)',6);
+  });
+  t+=piedPositions()+'</svg>';
+  document.getElementById('planTop').innerHTML=t;
+
+  /* ---------- VUES SEPAREES : un boom et ses demi-elements, brin entier (coupe) ---------- */
+  function vueBoom(couleur, haut, cote){
+    let q='<svg viewBox="0 0 '+f1(W)+' '+f1(Ht)+'" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,Arial">';
+    q+=entete()+corpsBoom(couleur,0.20);
+    q+=txt(W/2, 8, cote, 'middle', couleur, 7);
+    el.forEach((e,k)=>{
+      const X=PX(e), half=e.L/2, w=Math.max(e.L*0.012,1.3);
+      const up = haut(k);                       // brin vers le haut (G) ou vers le bas (D)
+      const tip  = up ? yc-half : yc+half;
+      const stub = up ? yc+boom/2+over : yc-boom/2-over;   // debord de l'autre cote du boom
+      q+=line(X, stub, X, tip, couleur, w);
+      q+=dot(X,yc,Math.max(dia/2,1.4),couleur);
+      q+=txt(X, up ? tip-3 : tip+8, (up?'G ':'D ')+fmt(e.cut), 'middle','var(--ink)',6);
+    });
+    q+=piedPositions()+'</svg>';
+    return q;
+  }
+  document.getElementById('planRed').innerHTML  =vueBoom('var(--red)',  k=>redUp(k),  'boom haut (rouge) — cotes = coupe du brin');
+  document.getElementById('planGreen').innerHTML=vueBoom('var(--green)',k=>!redUp(k), 'boom bas (vert) — cotes = coupe du brin');
+
+  /* ---------- VUE DE PROFIL ----------
+     deux booms empiles, MEME percage (miroir) : un point sur chaque boom a chaque position. */
+  const top0=12, redY=top0, greenY=redY+boom+gap;
+  const Hp=greenY+boom+18;
+  const redC=redY+boom/2, greenC=greenY+boom/2;
+  const r=Math.max(dia/2,1.4);
+  let p='<svg viewBox="0 0 '+f1(W)+' '+f1(Hp)+'" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,Arial">';
+  p+=rect(m, redY,   boomTot, boom, 'var(--red)',   0.20)+line(m,redY,m+boomTot,redY,'var(--red)',0.4)+line(m,redY+boom,m+boomTot,redY+boom,'var(--red)',0.4);
+  p+=rect(m, greenY, boomTot, boom, 'var(--green)', 0.20)+line(m,greenY,m+boomTot,greenY,'var(--green)',0.4)+line(m,greenY+boom,m+boomTot,greenY+boom,'var(--green)',0.4);
+  el.forEach((e,k)=>{
+    const X=PX(e);
+    p+=dot(X, redC,   r, 'var(--red)');
+    p+=dot(X, greenC, r, 'var(--green)');
+    p+=txt(X, redY-3, (k+1)+'', 'middle','var(--ink)',6);
+  });
+  p+=txt(m+2, greenY+boom+8, 'rouge = boom haut · vert = boom bas', 'start','var(--mut)',5.5);
+  p+=scaleBar(W-m-100, Hp-4);
+  p+='</svg>';
+  document.getElementById('planSide').innerHTML=p;
+
+  document.getElementById('planleg').textContent=
+    'Cotes en mm. Boom dessiné sur sa longueur de coupe : '+fmt(margE)+' mm de marge côté pointe et côté queue ('
+    +fmt(margE-dia/2)+' mm de métal entre le trou et le bout). Positions mesurées depuis le bord avant du boom. '
+    +'À chaque position : un demi-élément rouge (boom haut) d\'un côté et un demi-élément vert (boom bas) du côté opposé ; '
+    +'le sens s\'inverse à chaque position (transposition). Vues séparées : brin entier tel que coupé (L/2 + demi-boom + débord), '
+    +'G / D = côté du brin. Les deux booms ont le MÊME perçage (miroir), Ø'+dia+' mm. Profil : booms empilés, entrefer '+gap+' mm.';
+}
+
+/* --- helpers SVG/format --- */
+function rect(x,y,w,h,c,op){return '<rect x="'+f1(x)+'" y="'+f1(y)+'" width="'+f1(w)+'" height="'+f1(h)+'" fill="'+c+'" fill-opacity="'+op+'" stroke="'+c+'" stroke-width="0.4"/>';}
+function scaleBar(sx,sy){return line(sx,sy,sx+100,sy,'#222',1)+line(sx,sy-2,sx,sy+2,'#222',1)+line(sx+100,sy-2,sx+100,sy+2,'#222',1)+txt(sx+50,sy-2,'100 mm','middle','#222',6);}
+function line(x1,y1,x2,y2,c,w){return '<line x1="'+f1(x1)+'" y1="'+f1(y1)+'" x2="'+f1(x2)+'" y2="'+f1(y2)+'" stroke="'+c+'" stroke-width="'+f1(w)+'" stroke-linecap="round"/>';}
+function dot(x,y,r,c){return '<circle cx="'+f1(x)+'" cy="'+f1(y)+'" r="'+f1(r)+'" fill="#fff" stroke="'+(c||'var(--acc2)')+'" stroke-width="0.8"/>';}
+function txt(x,y,t,anchor,c,sz){return '<text x="'+f1(x)+'" y="'+f1(y)+'" text-anchor="'+anchor+'" fill="'+c+'" font-size="'+sz+'">'+t+'</text>';}
+function kpi(b,s){return '<div class="kpi"><b>'+b+'</b><span>'+s+'</span></div>';}
+function v(id){return document.getElementById(id).value;}
+function fmt(x){return (Math.round(x*10)/10).toFixed(1);}
+function f1(x){return (Math.round(x*100)/100);}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  ['flow','fhigh','npair','boom','over','gap','dia','marg'].forEach(id=>
+    document.getElementById(id).addEventListener('input',calc));
+  calc();
+});
+</script>
+</body>
+</html>
